@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Línea de Tiempo: Signos Vitales</title>
+
+<style>
+  /* --- OPTIMIZACIÓN GLOBAL --- */
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  img, video { max-width: 100%; height: auto; }
+  body {  
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-image: url('https://www.shutterstock.com/image-photo/selective-focus-on-monitor-vital-600nw-2549744457.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: #111;
+  }
+
+  h1 { text-align:center; color:#fff; margin-bottom:20px; line-height:1.3; }
+
+  /* --- TIMELINE --- */
+  .timeline { position: relative; max-width: 900px; margin: 20px auto 60px; }
+  .timeline::after {
+    content: ''; position: absolute; width: 6px; background-color: #ff0000; top: 0; bottom: 0; left: 50%; margin-left: -3px; border-radius: 3px;
+  }
+  .entry { padding: 20px; position: relative; width: 50%; box-sizing: border-box; }
+  .entry .content {
+    background: rgba(255,255,255,0.98);
+    padding: 20px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .entry .content:hover { transform: scale(1.03); }
+  .entry .details {
+    display: block;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    color: #1a237e;
+    transition: max-height 0.6s ease, opacity 0.6s ease;
+  }
+  .entry img { max-width: 300px; height: auto; display:block; margin:10px 0; }
+
+  .entry.left { left: 0; }
+  .entry.right { left: 50%; }
+
+  .entry::before {
+    content: '❤️';
+    position: absolute; top: 25px; width: 26px; height: 26px;
+    background: #fff; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .entry.left::before { right: -30px; }
+  .entry.right::before { left: -30px; }
+
+  .year { font-size: 22px; font-weight: bold; color: #b30000; }
+  .arrow { float: right; font-size: 20px; color: #b30000; }
+
+  /* --- DRAG & DROP --- */
+  .dropbox{
+    width:200px; height:120px; background:#ffffff; border-radius:10px; padding:10px;
+    text-align:center; display:flex; align-items:center; justify-content:center; flex-direction:column;
+  }
+  .card{
+    padding:10px 20px; border-radius:8px; cursor:grab;
+    font-weight:bold; user-select:none;
+  }
+
+  @media (max-width: 700px){
+    .entry { width: 100%; left: 0 !important; }
+    .timeline::after { left: 20px; }
+    .entry.left::before, .entry.right::before { left: 6px; }
+    .dropbox{ width:45%; }
+  }
+
+  @media (max-width: 480px){
+    body{ padding:10px; }
+    h1{ font-size:22px; }
+    .dropbox{ width:90% !important; height:auto; padding:15px; }
+    #dragdrop-zona .card{ width:90%; text-align:center; }
+    .timeline::after{ left:10px; }
+    .entry{ padding-left:35px; }
+  }
+
+  /* --- EFECTOS --- */
+  @keyframes pulseGreen{
+    0%{ box-shadow:0 0 0px rgba(0,200,0,0.0); }
+    50%{ box-shadow:0 0 18px rgba(0,200,0,0.6); }
+    100%{ box-shadow:0 0 0px rgba(0,200,0,0.0); }
+  }
+  @keyframes pulseRed{
+    0%{ box-shadow:0 0 0px rgba(255,0,0,0.0); }
+    50%{ box-shadow:0 0 18px rgba(255,0,0,0.6); }
+    100%{ box-shadow:0 0 0px rgba(255,0,0,0.0); }
+  }
+
+  .mascota-flotante{
+    position:fixed; bottom:10px; right:10px;
+    width:90px; height:auto;
+    z-index:999; pointer-events:none;
+    animation:float 3s ease-in-out infinite;
+    object-fit:contain; display:none;
+    will-change: transform;
+  }
+
+  @keyframes float{
+    0%{ transform:translateY(0);}
+    50%{ transform:translateY(-10px);}
+    100%{transform:translateY(0);}
+  }
+
+  #felicitacionModal{
+    display:none; position:fixed; top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,0.6);
+    z-index:2000;
+    align-items:center; justify-content:center;
+  }
+  #felicitacionModal div{
+    background:white; padding:30px;
+    border-radius:20px; text-align:center;
+    position:relative;
+  }
+</style>
+</head>
+<body>
+
+<h1>Centro de Formación y Entrenamiento de<br>
+<span style="display:block;">BOMBEROS YUMBO</span><br>
+Rangos de Signos Vitales</h1>
+
+<div style="text-align:center; margin-bottom:20px;">
+  <img src="https://www.bomberosyumbo.net.co/wp-content/uploads/2022/07/logo-bomberos-yumbo.png"
+       loading="lazy" alt="Logo" style="width:180px; opacity:0.95;">
+</div>
+
+<!-- =========================================================
+                      LÍNEA DE TIEMPO
+========================================================= -->
+<div class="timeline">
+
+  <div class="entry left">
+    <div class="content" onclick="toggleDetails('fc')" tabindex="0">
+      <span class="year">Frecuencia Cardíaca</span> <span class="arrow">▼</span>
+      <div id="fc" class="details">
+        <p>Adultos: 60-100 lpm<br>Niños: 70-120 lpm<br>Lactantes: 100-160 lpm</p>
+        <img src="https://www.apple.com/newsroom/cl/images/Apple-Watch-ECG-app-12062018_big.gif.large.gif"
+             loading="lazy">
+      </div>
+    </div>
+  </div>
+
+  <div class="entry right">
+    <div class="content" onclick="toggleDetails('fr')" tabindex="0">
+      <span class="year">Frecuencia Respiratoria</span> <span class="arrow">▼</span>
+      <div id="fr" class="details">
+        <p>Adultos: 12-20 rpm<br>Niños: 20-30 rpm<br>Lactantes: 30-60 rpm</p>
+        <img src="https://www.visiblebody.com/hubfs/learn/assets/glossary/respiratory/respiratory-system-pulmonary-ventilation-gif.gif"
+             loading="lazy">
+      </div>
+    </div>
+  </div>
+
+  <div class="entry left">
+    <div class="content" onclick="toggleDetails('ta')" tabindex="0">
+      <span class="year">Tensión Arterial</span> <span class="arrow">▼</span>
+      <div id="ta" class="details">
+        <p>
+        Adultos: 110/70 a 120/80 mmHg<br>
+        Niños: 90/60 a 110/70 mmHg<br><br>
+        <strong>Sístole:</strong> contracción del corazón.<br>
+        <strong>Diástole:</strong> relajación del corazón.
+        </p>
+        <img src="https://img.genial.ly/648aa2fbc80fe800192789ff/d8f5f25e-5ce6-4da1-8771-f18eae2f1636.gif"
+             loading="lazy">
+      </div>
+    </div>
+  </div>
+
+  <div class="entry right">
+    <div class="content" onclick="toggleDetails('temp')" tabindex="0">
+      <span class="year">Temperatura</span> <span class="arrow">▼</span>
+      <div id="temp" class="details">
+        <p>Rango normal: 36.0°C - 37.5°C<br>Fiebre: desde 38°C</p>
+        <img src="https://i.pinimg.com/originals/c2/cc/ac/c2ccac54482455521b09aae13684e97d.gif"
+             loading="lazy">
+      </div>
+    </div>
+  </div>
+
+  <div class="entry left">
+    <div class="content" onclick="toggleDetails('sato2')" tabindex="0">
+      <span class="year">Saturación de Oxígeno</span> <span class="arrow">▼</span>
+      <div id="sato2" class="details">
+        <p>Normal: 95%-100%<br>Alarma: &lt; 90%</p>
+        <img src="https://i.gifer.com/KZff.gif" loading="lazy">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- =========================================================
+                      JUEGO
+========================================================= -->
+<section id="juegos" style="
+  margin-top:60px;
+  background:rgba(255,255,255,0.97);
+  padding:40px 30px;
+  border-radius:20px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.15);">
+
+  <h2 style="text-align:center; color:#b30000; margin-bottom:20px;">
+    Juego de Repaso: Signos Vitales
+  </h2>
+
+  <div style="text-align:center; margin-bottom:10px;">
+    <button id="resetBtn" style="
+      padding:10px 20px;
+      background:#b30000; color:white;
+      border:none; border-radius:8px;
+      cursor:pointer; font-size:16px; font-weight:bold;">
+      🔄 Resetear
+    </button>
+  </div>
+
+  <h3>Arrastra y Suelta</h3>
+  <p>Empareja cada signo vital con su rango correspondiente:</p>
+
+  <div style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center; margin-top:20px;">
+    <div id="drop1" class="dropbox" data-original="60-100 lpm"></div>
+    <div id="drop2" class="dropbox" data-original="12-20 rpm"></div>
+    <div id="drop3" class="dropbox" data-original="120/80 mmHg"></div>
+    <div id="drop4" class="dropbox" data-original="95%-100%"></div>
+    <div id="drop5" class="dropbox" data-original="36.0°C - 37.5°C"></div>
+  </div>
+
+  <div id="dragdrop-zona" style="
+    display:flex; flex-wrap:wrap;
+    gap:20px; justify-content:center;
+    margin-top:30px;"></div>
+</section>
+
+<!-- =========================================================
+                      EFECTOS
+========================================================= -->
+<img src="https://i.ibb.co/ds9zCLdF/acevedo11.png" loading="lazy"
+     class="mascota-flotante" id="mascota">
+
+<canvas id="confettiCanvas" style="position:fixed; top:0; left:0; pointer-events:none;"></canvas>
+
+<div id="felicitacionModal">
+  <div>
+    <img src="https://i.ibb.co/ds9zCLdF/acevedo11.png" loading="lazy"
+         style="width:220px; animation:float 3s ease-in-out infinite;">
+    <h2 style="color:#b30000; margin-top:10px; font-size:30px;">
+      ¡Felicitaciones, lo has logrado!
+    </h2>
+    <button onclick="cerrarModal()" style="
+      position:absolute; top:10px; right:10px;
+      background:#b30000; color:white;
+      border:none; padding:5px 12px;
+      border-radius:6px; cursor:pointer;
+      font-weight:bold;">
+      X
+    </button>
+  </div>
+</div>
+
+<audio id="aplausos" preload="auto"
+  src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_03f3a14e60.mp3?filename=aplausos-6031.mp3">
+</audio>
+
+<script>
+/* --- Toggle Secciones --- */
+function toggleDetails(id){
+  const section = document.getElementById(id);
+  const arrow = section.parentElement.querySelector('.arrow');
+  const isOpen = section.style.maxHeight && section.style.maxHeight !== '0px';
+
+  section.style.maxHeight = isOpen ? '0px' : section.scrollHeight + 'px';
+  section.style.opacity = isOpen ? 0 : 1;
+  arrow.textContent = isOpen ? '▼' : '▲';
+}
+
+/* --- Drag & Drop Clásico (mejor compatibilidad móvil) --- */
+function allowDrop(ev){ ev.preventDefault(); }
+function drag(ev){ ev.dataTransfer.setData("text", ev.target.id); }
+
+function drop(ev){
+  ev.preventDefault();
+  const data = ev.dataTransfer.getData("text");
+  const card = document.getElementById(data);
+  const target = ev.currentTarget;
+
+  const correct = {
+    drop1:"card1", drop2:"card2", drop3:"card3",
+    drop4:"card4", drop5:"card5"
+  };
+
+  const isCorrect = correct[target.id] === data;
+
+  target.style.transition="0.35s";
+  target.style.background = isCorrect ? "#c8ffc8" : "#ffb3b3";
+
+  const original = target.getAttribute("data-original");
+
+  target.innerHTML = `
+    <div style="font-weight:600">${original}</div>
+    <div style="min-height:34px;">
+      ${isCorrect ? '<span style="font-size:28px;color:green;">✔</span>' 
+                  : '<span style="font-size:28px;color:red;">✖</span>'}
+    </div>
+  `;
+
+  target.appendChild(card);
+  target.style.animation = isCorrect ? "pulseGreen 0.8s ease" : "pulseRed 0.8s ease";
+
+  if(checkAllCorrect()) launchConfetti();
+}
+
+const nameCards = [
+  { id:"card1", label:"Frecuencia Cardíaca", color:"#ffd1d1" },
+  { id:"card2", label:"Frecuencia Respiratoria", color:"#d1fff0" },
+  { id:"card3", label:"Tensión Arterial", color:"#d1ffd8" },
+  { id:"card4", label:"Saturación de Oxígeno", color:"#ffe7c6" },
+  { id:"card5", label:"Temperatura", color:"#fff3b0" }
+];
+
+function shuffle(array){
+  for(let i=array.length-1;i>0;i--){
+    const j = Math.floor(Math.random() * (i+1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function loadShuffledCards(){
+  const zone = document.getElementById("dragdrop-zona");
+  zone.innerHTML = '';
+
+  shuffle([...nameCards]).forEach(card=>{
+    const div = document.createElement('div');
+    div.id = card.id;
+    div.textContent = card.label;
+    div.draggable = true;
+    div.className = 'card';
+    div.style.background = card.color;
+    div.ondragstart = drag;
+    zone.appendChild(div);
+  });
+}
+
+function resetDragDrop(){
+  document.querySelectorAll('.dropbox').forEach(b=>{
+    b.innerHTML = `
+      <div style="font-weight:600">${b.getAttribute('data-original')}</div>
+      <div style="min-height:34px;"></div>`;
+    b.style.background="#fff";
+  });
+  loadShuffledCards();
+}
+
+function checkAllCorrect(){
+  const mapping = { drop1:"card1", drop2:"card2", drop3:"card3", drop4:"card4", drop5:"card5" };
+  return Object.keys(mapping).every(id => 
+    document.getElementById(id).querySelector('#'+mapping[id])
+  );
+}
+
+/* --- Confetti + Modal --- */
+function launchConfetti(){
+  const canvas = document.getElementById('confettiCanvas');
+  const ctx = canvas.getContext('2d');
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.display = "block";
+
+  const pieces = [];
+  for(let i=0;i<130;i++){
+    pieces.push({
+      x: Math.random()*canvas.width,
+      y: Math.random()*canvas.height,
+      r: 4 + Math.random()*4,
+      dx: -2+Math.random()*4,
+      dy: 1+Math.random()*3,
+      color:`hsl(${Math.random()*360},100%,50%)`
+    });
+  }
+
+  function update(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    pieces.forEach(p=>{
+      p.x += p.dx;
+      p.y += p.dy;
+      if(p.y > canvas.height) p.y = -10;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+    });
+    requestAnimationFrame(update);
+  }
+  update();
+
+  document.getElementById('mascota').style.display='block';
+  document.getElementById('felicitacionModal').style.display='flex';
+
+  const aplausos = document.getElementById("aplausos");
+  aplausos.volume = 0.5;
+  aplausos.play().catch(()=>{});
+
+  setTimeout(()=>{
+    canvas.style.display='none';
+    document.getElementById('mascota').style.display='none';
+  },5000);
+}
+
+function cerrarModal(){
+  document.getElementById("felicitacionModal").style.display="none";
+}
+
+window.addEventListener('resize', ()=>{
+  const canvas = document.getElementById('confettiCanvas');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('.content').forEach(c=>{
+    c.addEventListener('keyup', e=>{
+      if(e.key === 'Enter' || e.key === ' ') c.click();
+    });
+  });
+
+  document.querySelectorAll('.dropbox').forEach(b=>{
+    b.addEventListener('dragover',allowDrop);
+    b.addEventListener('drop',drop);
+    b.innerHTML = `
+    <div style="font-weight:600">${b.getAttribute('data-original')}</div>
+    <div style="min-height:34px;"></div>`;
+  });
+
+  loadShuffledCards();
+});
+</script>
+
+</body>
+</html>
